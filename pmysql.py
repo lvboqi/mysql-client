@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
- !!!!!!!!!! ПЕРЕРАБОТАТЬ СООБЩЕНИЯ ОБ ОШИБКАХ !!!!!!!!!!!!!
+ !!!!!!!!!! ДОБАВИТЬ ОБРАБОТЧИК ДЛЯ CURSOR.FETCHALL() !!!!!!!!!!!!!!!!!!!!!!!! #
+ !!!!!!!!!! СТРУКТУРИРОВАТЬ СООБЩЕНИЯ ОБ ОШИБКАХ !!!!!!!!!!!!!
 """
 import MySQLdb as db
 
@@ -8,6 +9,7 @@ class Mysql:
     def __init__(self, host, userName, userPass, userDB=None):
         try:
             self.connect = db.connect(host, userName, userPass)
+            self.connect.set_character_set("cp1251")
             self.cursor  = self.connect.cursor()
             self.listDB  = [] # !!!! ПРИ ЛЮБЫХ ОПЕРАЦИЯХ СО СПИСКОМ - ИСПОЛЬЗОВАТЬ .lower() !!!!!
             self.listTbl = {} # !!!! ПРИ ЛЮБЫХ ОПЕРАЦИЯХ СО СЛОВАРЕМ - ИСПОЛЬЗОВАТЬ .lower() !!!!!
@@ -15,7 +17,7 @@ class Mysql:
             self.listData= {} # !!!! ПРИ ЛЮБЫХ ОПЕРАЦИЯХ СО СЛОВАРЕМ - ИСПОЛЬЗОВАТЬ .lower() !!!!
             self.describeTbl = {}
         except:
-            print("Error 1") # Error 1 - отсутствует соединение с базой данных
+            print("Error 1 аа") # Error 1 - отсутствует соединение с базой данных
 
     # Фукнция для запросов к бд
     def execute(self, sql):
@@ -123,6 +125,21 @@ class Mysql:
         self.listData[tblName.lower()] = []
         for row in result:
             self.listData[tblName.lower()].append(row)
+
+    def tblUpdate(self, dbName, tblName, data):
+        # Проверяем - существует ли указанная база данных
+        if dbName.lower() not in self.listDB:
+            return "Error 9" # Error 9 - попытка подключиться к несуществующей базе данных
+        self.connect.select_db(dbName)
+        # Проверяем - существует ли указанная таблица
+        if tblName.lower() not in self.listTbl[dbName.lower()]:
+            return "Error 10" # Error 10 - попытка получить данные из несуществующей таблицы
+        sql = "UPDATE %s SET %s = '%s' WHERE %s = '%s'" % (data[1], data[4], data[5], data[2], data[3])
+        print sql
+        self.execute(unicode(sql))
+        self.connect.commit()
+        result = self.cursor.fetchall()
+        print result
 
 
     def describe(self, dbName, tblName):
