@@ -349,14 +349,3 @@ main = MainWindow()
 main.show()
 if not sys.exit(app.exec_()):
     del app
-
-
-
-
-
-
-
-
-
-
-
