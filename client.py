@@ -2,10 +2,14 @@
 import sys
 import sip
 from pmysql import Mysql
-from PyQt4 import QtGui, QtCore, uic
+from PyQt4 import QtGui
+from PyQt4 import QtCore
+from PyQt4 import uic
 
+# 1. Инициализируем GUI
 class MainWindow(QtGui.QMainWindow):
     def __init__(self):
+        # Инициализация переменных
         self.activeTblName = None # Активная таблица
         self.activeDbName  = None # Активная БД
         self.tableTree = {}       # !!!! ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ .lower() !!!!! структура { База данных : [ таблица 1, таблица 2 ] }
@@ -97,7 +101,7 @@ class MainWindow(QtGui.QMainWindow):
 
 
 
-    # Создания дерева баз данных и принадлежащих им таблиц
+    # Создания дерева баз данных и таблиц
     def treeDbInit(self):
         self.dbInfo.clear()
         TreeDbHeader=QtGui.QTreeWidgetItem([u"Базы данных"])
@@ -117,8 +121,8 @@ class MainWindow(QtGui.QMainWindow):
         # Прерываем выполнение tableItemChanged
         self.LoadNewTable = True
         # Определяем, какая таблица и в какой БД выбрана
-        itemName   = str(item.text(column)).encode('utf-8')
-        parentName = str(self.dbInfo.currentItem().parent().text(0)).encode('utf-8')
+        itemName   = str(item.text(column))
+        parentName = str(self.dbInfo.currentItem().parent().text(0))
         # Получаем информацию из таблицы
         self.ms.getTableData(parentName, itemName)
         # Устанавливаем необходимое количество столбцов и строк
@@ -132,21 +136,21 @@ class MainWindow(QtGui.QMainWindow):
         self.activeTblName = itemName
         self.activeDbName  = parentName
         # Заносим данные в таблицу
-        j = 0; i = 0
+        j = 0
         for row in self.ms.listData[itemName]:
             for rowItem in row:
-                item = QtGui.QTableWidgetItem(str(rowItem))
+                item = QtGui.QTableWidgetItem(str(rowItem).decode('cp1251'))
                 self.tableW.setItem(0, j, item)
                 j += 1
-            i = i+1
         self.LoadNewTable = False
 
     # Функция - обновление значения ячейки
     def tableItemChanged(self, Item):
         # Если итемы меняются при загрузке таблицы - прерываем выполнение
         if self.LoadNewTable == True:
-            del Item
             return
+        # Получаем измененное значение в таблице
+        changedItem = Item.text()
         # Получаем номер строки и номер столбца, где было изменено значение
         row = Item.row()
         colNumb = Item.column()
@@ -160,12 +164,24 @@ class MainWindow(QtGui.QMainWindow):
                 break
             else:
                 columnPriKey = None
-                
+
+        # Если столбец UNIQUE KEY есть, UPDATE делаем по нему
         if columnPriKey <> columnName and columnPriKey <> None:
-            # Обновлять таблицу можно по columnPriKey
-            print(u'Обновлять таблицу можно по columnPriKey')
+            ## GOVNOKOD DETECTED, SORRY ##
+            #Получаем значение, хранящееся в ячейке UNIQUE KEY, требуется придумать более расово-верный способ
+            i = 0
+            for colName in self.ms.listCol[self.activeTblName]:
+                if colName == columnPriKey:
+                    columnPriKeyValue = unicode(self.tableW.item (row, i).text())
+                    break
+                else:
+                    i += i
+            self.ms.tblUpdate(self.activeDbName, self.activeTblName, [0, self.activeTblName, columnPriKey, columnPriKeyValue, columnName, changedItem])
+        # Если столбец UNIQUE KEY отсутствует, заменяем данные в таблице, указав во WHERE все столбцы, и LIMIT 1
         if columnPriKey == None:
             print(u'Обновляем таблицу, используя все столбцы в таблице и используя limit 1')
+            
+        # Если меняется столбец UNIQUE KEY - меняем по нему же, используя старое значение
         if columnPriKey == columnName:
             print(u'Обновляем таблицу, используя все столбцы в таблице и используя limit 1')
 
@@ -225,7 +241,7 @@ class MainWindow(QtGui.QMainWindow):
             self.errorLbl.show()
             return
 
-#   !!!!!!!!!!!!!!!!!!!!
+
 
     # Модальное окно коннекта к mysql
     def _actionConnectModal(self):
