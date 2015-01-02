@@ -15,7 +15,7 @@ class MainWindow(QtGui.QMainWindow):
         self.tableTree = {}       # !!!! ОБЯЗАТЕЛЬНО ИСПОЛЬЗОВАТЬ .lower() !!!!! структура { База данных : [ таблица 1, таблица 2 ] }
         self.ms  = None           # Класс Mysql
         self.modalWindConnect = None # Модальное окно Connect'a
-
+        self.lastItemPreviousValue = None # Прежнее значеные выбраной ячейки
         self.errorLbl = None  # Принадлежит Модальному окну коннекта
         self.hostEdit = None  # Принадлежит модальному окну коннекта
         self.loginEdit = None # Принадлежит модальному окну коннекта
@@ -29,6 +29,7 @@ class MainWindow(QtGui.QMainWindow):
         uic.loadUi('form.ui', self)
         self.setWindowIcon(QtGui.QIcon('img/ico.png'))
         # Теперь - вызываем функцию, создающую меню
+        self.tableW.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked)
         self.InitMenu()
 
     # Функция - создает меню, Файл, Правка, etc
@@ -56,6 +57,7 @@ class MainWindow(QtGui.QMainWindow):
         # Обработка контекстных меню
         self.dbInfo.connect(self.dbInfo, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), self.onRightClickDbInfo)
         # Обработка изменений ячеек таблицы
+        self.tableW.itemPressed.connect(self.tableItemClick)
         self.tableW.itemChanged.connect(self.tableItemChanged)
 
 
@@ -144,6 +146,10 @@ class MainWindow(QtGui.QMainWindow):
                 j += 1
         self.LoadNewTable = False
 
+    # Функция для запоминания последнего выбранного итема в таблице
+    def tableItemClick(self, Item):
+        self.lastItemPreviousValue = unicode(Item.text())
+
     # Функция - обновление значения ячейки
     def tableItemChanged(self, Item):
         # Если итемы меняются при загрузке таблицы - прерываем выполнение
@@ -176,14 +182,39 @@ class MainWindow(QtGui.QMainWindow):
                     break
                 else:
                     i += i
-            self.ms.tblUpdate(self.activeDbName, self.activeTblName, [0, self.activeTblName, columnPriKey, columnPriKeyValue, columnName, changedItem])
-        # Если столбец UNIQUE KEY отсутствует, заменяем данные в таблице, указав во WHERE все столбцы, и LIMIT 1
+            self.ms.tblUpdate(self.activeDbName, self.activeTblName, [0, columnPriKey, columnPriKeyValue, columnName, changedItem])
+
+        # Если столбец UNIQUE KEY отсутствует - ищем уникальный ключ в строке
         if columnPriKey == None:
-            print(u'Обновляем таблицу, используя все столбцы в таблице и используя limit 1')
-            
+            i = 0; var = 1
+            for colName in self.ms.listCol[self.activeTblName]:
+                tblColumnName  = unicode(self.ms.listCol[self.activeTblName][i])
+                tblColumnValue = unicode(self.tableW.item (row, i).text())
+                if i == colNumb:
+                    tblColumnValue = unicode(self.lastItemPreviousValue)
+                if self.ms.countRows(self.activeDbName, self.activeTblName, tblColumnName, tblColumnValue) == 1:
+                    var = 0
+                    break
+                i = i+1
+            # Если var = 0 - обновляем таблицу по 1 колонке
+            if var == 0:
+                self.ms.tblUpdate(self.activeDbName, self.activeTblName, [0, tblColumnName, tblColumnValue, columnName, changedItem])
+            else:
+                i = 0
+                sql = ''
+                for colName in self.ms.listCol[self.activeTblName]:
+                    tblColumnName  = unicode(self.ms.listCol[self.activeTblName][i])
+                    tblColumnValue = unicode(self.tableW.item (row, i).text())
+                    if i == colNumb:
+                        tblColumnValue = unicode(self.lastItemPreviousValue)
+                    sql = sql+tblColumnName+"='"+tblColumnValue+"' AND "
+                    i = i+1
+                sql = sql[0:-4]+' LIMIT 1'
+                self.ms.tblUpdate(self.activeDbName, self.activeTblName, [1, sql, columnName, changedItem])
+
         # Если меняется столбец UNIQUE KEY - меняем по нему же, используя старое значение
         if columnPriKey == columnName:
-            print(u'Обновляем таблицу, используя все столбцы в таблице и используя limit 1')
+            self.ms.tblUpdate(self.activeDbName, self.activeTblName, [0, columnPriKey, self.lastItemPreviousValue, columnName, changedItem])
 
 
     # Обработчик кнопки "Подключиться"
