@@ -126,6 +126,7 @@ class Mysql:
         for row in result:
             self.listData[tblName.lower()].append(row)
 
+    # Ф-ция для обновления значения в таблице
     def tblUpdate(self, dbName, tblName, data):
         # Проверяем - существует ли указанная база данных
         if dbName.lower() not in self.listDB:
@@ -134,14 +135,32 @@ class Mysql:
         # Проверяем - существует ли указанная таблица
         if tblName.lower() not in self.listTbl[dbName.lower()]:
             return "Error 10" # Error 10 - попытка получить данные из несуществующей таблицы
-        sql = "UPDATE %s SET %s = '%s' WHERE %s = '%s'" % (data[1], data[4], data[5], data[2], data[3])
+        if data[0] == 0:
+            sql = "UPDATE %s SET %s = '%s' WHERE %s = '%s'" % (tblName, data[3], data[4], data[1], data[2])
+        else:
+            sql = "UPDATE %s SET %s = '%s' WHERE %s" % (tblName, data[2], data[3], data[1])
         print sql
         self.execute(unicode(sql))
         self.connect.commit()
         result = self.cursor.fetchall()
-        print result
+        return True
 
 
+    # Ф-ция для подсчёта опр. строк в таблице
+    def countRows(self, dbName, tblName, colName, value):
+        # Проверяем - существует ли указанная база данных
+        if dbName.lower() not in self.listDB:
+            return "Error 9" # Error 9 - попытка подключиться к несуществующей базе данных
+        self.connect.select_db(dbName)
+        # Проверяем - существует ли указанная таблица
+        if tblName.lower() not in self.listTbl[dbName.lower()]:
+            return "Error 10" # Error 10 - попытка получить данные из несуществующей таблицы
+        sql = "SELECT COUNT(*) FROM %s WHERE %s = '%s'" % (tblName, colName, value)
+        self.execute(sql)
+        result = self.cursor.fetchall()
+        return result[0][0]
+
+    # Ф-ция для извлечения атрибутов каждого столбца таблицы
     def describe(self, dbName, tblName):
         # Проверяем - существует ли указанная база данных
         if dbName.lower() not in self.listDB:
@@ -155,3 +174,8 @@ class Mysql:
         return result
 
         # !!!!!!!!!! CURSOR.FETCHALL()  ВЫНЕСТИ В ОТДЕЛЬНУЮ Ф-ЦИЮ !!!!!!!!!!!!!!!!!!!!!!!! #
+
+
+
+#ms = Mysql('127.0.0.1','root', '')
+#ms.describe('xnova_com', 'xnova_discounts')
