@@ -165,15 +165,14 @@ class MainWindow(QtGui.QMainWindow):
         # Проверяем, есть ли в этой таблице столбец с UNIQUE KEY
         atributeTbl = self.ms.describe(self.activeDbName, self.activeTblName)
         for atr in atributeTbl:
-            if atr[3] == 'PRI':
+            if atr[5] == 'auto_increment':
                 columnPriKey = atr[0]
                 break
             else:
                 columnPriKey = None
 
-        # Если столбец UNIQUE KEY есть, UPDATE делаем по нему
+        # Если столбец auto_increment есть, UPDATE делаем по нему
         if columnPriKey <> columnName and columnPriKey <> None:
-            ## GOVNOKOD DETECTED, SORRY ##
             #Получаем значение, хранящееся в ячейке UNIQUE KEY, требуется придумать более расово-верный способ
             i = 0
             for colName in self.ms.listCol[self.activeTblName]:
